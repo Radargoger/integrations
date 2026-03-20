@@ -197,6 +197,14 @@ sudo /var/ossec/bin/wazuh-control restart
 | `alarm_main_types` | array | `[]` | Filter by main type (empty = all) |
 | `initial_lookback_hours` | integer | `24` | Hours to look back on first run |
 | `max_pages` | integer | `null` | Optional safety limit for pagination (useful during first runs) |
+| `http_timeout_seconds` | integer | `120` | HTTP request timeout per API call |
+| `http_retries` | integer | `0` | Extra in-run HTTP retries for transient errors (recommended: keep low; main retry mechanism is the state retry queue) |
+| `page_sleep_seconds` | number | `2` | Sleep between page requests during pagination (steady-state runs) |
+| `lookback_page_sleep_seconds` | number | `2` | Sleep between page requests during pagination on the first run (large lookback) |
+| `max_retry_pages` | integer | `200` | Max number of failed pages kept in the persistent retry queue |
+| `max_retry_pages_per_run` | integer | `1` | How many queued failed pages to attempt per run |
+| `retry_backoff_seconds` | integer | `60` | Base backoff for queued page retries (exponential) |
+| `retry_backoff_max_seconds` | integer | `3600` | Maximum backoff for queued page retries |
 
 Outbound (Wazuh → SOCRadar) settings are under `integration` in the same config file:
 
