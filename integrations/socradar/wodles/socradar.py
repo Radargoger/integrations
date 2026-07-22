@@ -231,10 +231,10 @@ def _should_retry_http_status(code):
 def api_request(url, headers, config=None):
     """Perform a GET request and parse JSON.
 
-    Retries up to 3 times by default with exponential backoff.
-    The persistent retry queue in the state file provides additional resiliency.
+    Retries are intentionally conservative and configurable. The main resiliency
+    mechanism is the persistent retry queue in the state file.
     """
-    http_retries = _get_int(config, "http_retries", default=3, min_value=0, max_value=5)
+    http_retries = _get_int(config, "http_retries", default=0, min_value=0, max_value=5)
     timeout_seconds = _get_int(config, "http_timeout_seconds", default=120, min_value=5, max_value=600)
 
     attempts = 0
@@ -789,29 +789,44 @@ def _clip_str(value, limit):
     s = value if isinstance(value, str) else str(value)
     if len(s) <= limit:
         return s
-    return s[:limit] + f"... [truncated {len(s) - limit} chars]"
+    if limit <= 0:
+        return ""
+    # Reserve room for the suffix so the result never exceeds `limit`.
+    suffix_template = "... [truncated {} chars]"
+    kept = max(0, limit - len(suffix_template.format(len(s))))
+    truncated = len(s) - kept
+    suffix = suffix_template.format(truncated)
+    kept = max(0, limit - len(suffix))
+    return (s[:kept] + suffix_template.format(len(s) - kept))[:limit]
+
+
+def _dumps_emit(output):
+    return json.dumps(output, ensure_ascii=False, separators=(",", ":"))
 
 
 def _bound_emit_payload(output, alarm_id=None):
     """Ensure stdout JSON stays within Wazuh-safe size by shrinking large fields."""
-    payload = json.dumps(output, ensure_ascii=False)
+    payload = _dumps_emit(output)
     if len(payload.encode("utf-8")) <= WAZUH_EMIT_MAX_BYTES:
         return payload
 
-    socradar = output.get("socradar") or {}
+    socradar = output.get("socradar")
+    if not isinstance(socradar, dict):
+        socradar = {}
+        output["socradar"] = socradar
     for key in ("alarm_text", "alarm_response", "mitigation", "detection_analysis"):
         if key in socradar:
             socradar[key] = _clip_str(socradar.get(key), min(WAZUH_FIELD_MAX.get(key, 500), 400))
 
     # Drop bulky optional blocks if still too large
     for key in ("compliance", "assignees", "related_assets", "related_entities", "content"):
-        payload = json.dumps(output, ensure_ascii=False)
+        payload = _dumps_emit(output)
         if len(payload.encode("utf-8")) <= WAZUH_EMIT_MAX_BYTES:
             break
         socradar.pop(key, None)
 
     # Last resort: keep identity fields only
-    payload = json.dumps(output, ensure_ascii=False)
+    payload = _dumps_emit(output)
     if len(payload.encode("utf-8")) > WAZUH_EMIT_MAX_BYTES:
         output["socradar"] = {
             "source": socradar.get("source"),
@@ -826,7 +841,7 @@ def _bound_emit_payload(output, alarm_id=None):
             "alarm_text": _clip_str(socradar.get("alarm_text"), 500),
             "truncated": True,
         }
-        payload = json.dumps(output, ensure_ascii=False)
+        payload = _dumps_emit(output)
 
     log(
         "WARN",
@@ -961,8 +976,8 @@ def main():
         f"{datetime.fromtimestamp(start_epoch, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} -> "
         f"{datetime.fromtimestamp(end_epoch, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}")
 
-    # Deduplicate against seen alarm IDs
-    seen = set(state.get("seen_alarm_ids", []))
+    # Deduplicate against seen alarm IDs (dict preserves insertion order)
+    seen = dict.fromkeys(state.get("seen_alarm_ids", []))
     new_count = 0
     total_fetched = 0
 
@@ -1018,7 +1033,7 @@ def main():
             alarm_id = incident.get("alarm_id")
             if alarm_id is not None and alarm_id not in seen:
                 emit_alert(incident)
-                seen.add(alarm_id)
+                seen[alarm_id] = True
                 new_count += 1
         total_fetched += len(page_data or [])
 
@@ -1093,10 +1108,10 @@ def main():
                     f"date={incident.get('date')}"
                 )
             emit_alert(incident)
-            seen.add(alarm_id)
+            seen[alarm_id] = True
             new_count += 1
 
-    # Bound the seen cache (keep last 50000)
+    # Bound the seen cache (keep most recently recorded IDs, up to 50000)
     seen_list = list(seen)
     if len(seen_list) > 50000:
         seen_list = seen_list[-50000:]
