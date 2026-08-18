@@ -1,0 +1,24 @@
+id: '4b7d1e9c-3a2f-4b65-9d8e-1c4a7f2e6b30'
+logsource:
+  product: caddy
+tags:
+  - attack.reconnaissance
+  - attack.t1595
+falsepositives:
+  - Authorized penetration testing or vulnerability scanning
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Known Attack/Scanner Tool Detected
+  author: Anmol Vats
+  description: Detects User-Agent strings belonging to common attack/scanning tools.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    user_agent.original|re: '(?i)(sqlmap|nikto|nmap|masscan|nuclei|gobuster|dirbuster|wfuzz|acunetix|nessus|openvas|zgrab|whatweb)'
+  condition: selection

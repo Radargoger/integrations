@@ -1,0 +1,24 @@
+id: 'd4f8e2a1-6c9b-4a53-8f1e-2d7a9c4b3e68'
+logsource:
+  product: caddy
+tags:
+  - attack.initial-access
+  - attack.t1190
+falsepositives:
+  - Applications that legitimately use php:// or file:// style parameters
+level: critical
+status: experimental
+enabled: true
+metadata:
+  title: Caddy LFI/RFI File Inclusion Attempt
+  author: Anmol Vats
+  description: Detects local/remote file inclusion attempts via php wrappers and similar schemes.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(php://|phar://|data://|expect://|zip://|glob://|file://|gopher://|dict://|\.(php|phtml|phar)\b.*=)'
+  condition: selection

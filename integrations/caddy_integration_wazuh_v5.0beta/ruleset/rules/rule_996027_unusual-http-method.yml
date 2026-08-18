@@ -1,0 +1,24 @@
+id: 'b8e4a2f1-9c3d-4d65-8e1a-4f6c2b9d3a70'
+logsource:
+  product: caddy
+tags:
+  - attack.initial-access
+  - attack.t1190
+falsepositives:
+  - WebDAV-enabled applications legitimately using PROPFIND/MKCOL/LOCK
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Unusual or Dangerous HTTP Method
+  author: Anmol Vats
+  description: Detects unusual or dangerous HTTP methods (CONNECT, DEBUG, PROPFIND, FUZZ, etc.).
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    http.request.method|re: '^(CONNECT|DEBUG|MOVE|COPY|PROPFIND|PROPPATCH|MKCOL|LOCK|UNLOCK|BREW|TEST|FUZZ|SEARCH|PURGE)$'
+  condition: selection

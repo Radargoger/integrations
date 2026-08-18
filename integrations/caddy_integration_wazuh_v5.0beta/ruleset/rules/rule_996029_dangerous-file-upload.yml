@@ -1,0 +1,24 @@
+id: 'e9d2a4c1-6f8b-4e73-a1c6-3d9f2b8a4c05'
+logsource:
+  product: caddy
+tags:
+  - attack.initial-access
+  - attack.t1190
+falsepositives:
+  - Applications intentionally allowing executable/script uploads (rare, should be reviewed)
+level: critical
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Dangerous File Upload Attempt
+  author: Anmol Vats
+  description: Detects upload requests targeting executable or server-side script file extensions.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(\/upload|\/uploads|\/files|\/media|\/assets|\/static)[^?]*\.(php[0-9]?|phtml|phar|asp|aspx|jsp|jspx|cfm|cgi|pl|py|rb|sh|exe|dll|bat|cmd|vbs|ps1)'
+  condition: selection

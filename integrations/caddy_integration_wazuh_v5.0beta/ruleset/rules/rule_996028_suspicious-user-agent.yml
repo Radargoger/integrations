@@ -1,0 +1,24 @@
+id: '1c6f9a3e-2d8b-4a47-9c1e-6b3f8a2d5e94'
+logsource:
+  product: caddy
+tags:
+  - attack.defense-evasion
+  - attack.t1036
+falsepositives:
+  - Some legitimate automated clients send empty or minimal User-Agent headers
+level: medium
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Suspicious User-Agent (Empty or Oversized)
+  author: Anmol Vats
+  description: Detects empty, placeholder, or abnormally long User-Agent headers often used to evade fingerprinting.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    user_agent.original|re: '^(\[\]|-|\s*)$|^.{500,}'
+  condition: selection

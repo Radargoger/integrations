@@ -1,0 +1,24 @@
+id: '3e8f2a1c-9d4b-4e76-b1a3-6c2e9f5d8b04'
+logsource:
+  product: caddy
+tags:
+  - attack.initial-access
+  - attack.t1190
+falsepositives:
+  - Very rare, this pattern is almost always malicious
+level: critical
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Log4Shell JNDI Injection Attempt
+  author: Anmol Vats
+  description: Detects JNDI lookup patterns associated with Log4Shell (CVE-2021-44228) exploitation attempts.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(\$\{jndi:|%24%7Bjndi%3A|%24%7Bjndi:)'
+  condition: selection

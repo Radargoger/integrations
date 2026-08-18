@@ -1,0 +1,24 @@
+id: 'c1a9e3f2-7b5d-4c48-a2e6-9d3f1b8c4a56'
+logsource:
+  product: caddy
+tags:
+  - attack.initial-access
+  - attack.t1190
+falsepositives:
+  - Rare, TRACE/TRACK are not commonly used legitimately
+level: medium
+status: experimental
+enabled: true
+metadata:
+  title: Caddy HTTP TRACE/TRACK Method
+  author: Anmol Vats
+  description: Detects HTTP TRACE or TRACK methods, potentially indicating a cross-site tracing attempt.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    http.request.method|re: '^(TRACE|TRACK)$'
+  condition: selection

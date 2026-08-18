@@ -1,0 +1,24 @@
+id: '5b1e8a3f-6c4d-4a92-8e1c-9f3a6b2d5e17'
+logsource:
+  product: caddy
+tags:
+  - attack.discovery
+  - attack.t1083
+falsepositives:
+  - Legitimate files whose name happens to contain these keywords
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Request for Suspicious Filename
+  author: Anmol Vats
+  description: Detects requests for files with names suggesting sensitive content (password, secret, apikey, etc.).
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)\/(password|passwd|secret|confidential|credential|private|token|apikey|api[_-]key|auth)[^/]*(\.[a-z]{1,5})?$'
+  condition: selection

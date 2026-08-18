@@ -1,0 +1,24 @@
+id: 'e6d2a4f8-1c3b-4a95-8e7d-2b6f9a1c3d58'
+logsource:
+  product: caddy
+tags:
+  - attack.execution
+  - attack.t1059.007
+falsepositives:
+  - Legitimate pages containing script-related keywords in content
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy XSS Attempt in URI
+  author: Anmol Vats
+  description: Detects cross-site scripting payloads in the request URI.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(%3Cscript|<script|javascript:|onerror=|onload=|alert\(|document\.cookie|eval\()'
+  condition: selection

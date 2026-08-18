@@ -1,0 +1,24 @@
+id: 'f2e9c4a1-3d7b-4e58-9f2a-6c1e8d4b3a75'
+logsource:
+  product: caddy
+tags:
+  - attack.discovery
+  - attack.t1083
+falsepositives:
+  - Legitimate log file serving in some deployments
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Application Log File Access
+  author: Anmol Vats
+  description: Detects access attempts to application/error/debug log files.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)\/(error|access|debug|app|application|server|system|audit|exception)\.(log|txt|out)(\?|$)'
+  condition: selection

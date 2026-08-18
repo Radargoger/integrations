@@ -1,0 +1,24 @@
+id: '7f3a1c2e-4b6d-4e91-9a2f-1d8c6b3e0a17'
+logsource:
+  product: caddy
+tags:
+  - attack.initial-access
+  - attack.t1190
+falsepositives:
+  - Legitimate content containing SQL-like keywords in search or content fields
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy SQL Injection Attempt
+  author: Anmol Vats
+  description: Detects SQL injection patterns (UNION SELECT, OR 1=1, etc.) in the request URI.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(union.+select|select.+from|insert.+into|drop.+table|(%27|'')(\s|%20)*(or)(\s|%20)+|(\s|%20)(or)(\s|%20)+1(\s|%20)*(%3D|=)(\s|%20)*1)'
+  condition: selection
