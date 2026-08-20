@@ -1,0 +1,24 @@
+id: '78c290a5-bc22-4691-9661-81db77125f54'
+logsource:
+  product: caddy
+tags:
+  - attack.discovery
+  - attack.t1083
+falsepositives:
+  - Legitimate use of ../ in query parameters by specific applications
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Path Traversal Attempt
+  author: Anmol Vats
+  description: Detects path traversal attempts in Caddy access logs via ../ or its URL encoded variants in the request URI.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(\.\./|\.\.\\|%2e%2e|%252e%252e)'
+  condition: selection

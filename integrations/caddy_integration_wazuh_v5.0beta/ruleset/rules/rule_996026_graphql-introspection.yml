@@ -1,0 +1,24 @@
+id: '3f9a1c6e-4b8d-4c72-9e1a-8f3c6a2d5e04'
+logsource:
+  product: caddy
+tags:
+  - attack.reconnaissance
+  - attack.t1595.002
+falsepositives:
+  - Legitimate GraphQL client tooling during development
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy GraphQL Introspection or API Schema Probe
+  author: Anmol Vats
+  description: Detects GraphQL introspection queries and schema probing attempts.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(\/graphql|\/graphiql|\/gql|__schema|__type|__typename|introspectionquery)'
+  condition: selection

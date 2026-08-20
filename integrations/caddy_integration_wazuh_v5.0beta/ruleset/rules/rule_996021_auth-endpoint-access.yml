@@ -1,0 +1,22 @@
+id: '9d3f6a1c-2e8b-4c47-a1e6-3b9f2c8d4a05'
+logsource:
+  product: caddy
+tags: []
+falsepositives:
+  - Normal user login activity — this rule is primarily a building block for brute-force detection
+level: low
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Authentication Endpoint Access
+  author: Anmol Vats
+  description: Detects access to common authentication/login endpoints.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)\/(login|signin|sign-in|logon|auth|authenticate|wp-login\.php|admin\/login|account\/login|session\/new|user\/login|api\/login|api\/auth|oauth\/token|token)(\/|\?|$)'
+  condition: selection

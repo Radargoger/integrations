@@ -1,0 +1,24 @@
+id: '7e2c9a4f-1d8b-4e36-a3f2-6c9e1a8d4b57'
+logsource:
+  product: caddy
+tags:
+  - attack.command-and-control
+  - attack.t1090
+falsepositives:
+  - Legitimate internal integrations that reference internal hostnames in parameters
+level: critical
+status: experimental
+enabled: true
+metadata:
+  title: Caddy SSRF Attempt Targeting Internal Resource
+  author: Anmol Vats
+  description: Detects SSRF attempts targeting cloud metadata endpoints or internal/private network addresses.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(169\.254\.169\.254|metadata\.google\.internal|metadata/instance|169\.254\.170\.2|100\.100\.100\.200|[?&][^&]*=https?://(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|localhost)|[?&][^&]*=https?://[^/]*\.(internal|local|corp|intranet))'
+  condition: selection

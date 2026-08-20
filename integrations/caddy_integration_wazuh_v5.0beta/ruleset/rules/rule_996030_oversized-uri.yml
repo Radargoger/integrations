@@ -1,0 +1,24 @@
+id: '4a1e8c2f-9d3b-4c56-8a2e-1f6c9a3b4d70'
+logsource:
+  product: caddy
+tags:
+  - attack.reconnaissance
+  - attack.t1595.002
+falsepositives:
+  - Applications with legitimately long query strings (e.g. base64-encoded state parameters)
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Oversized URI Detected
+  author: Anmol Vats
+  description: Detects abnormally long request URIs, often indicating fuzzing or buffer-overflow probing.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '^.{1000,}'
+  condition: selection

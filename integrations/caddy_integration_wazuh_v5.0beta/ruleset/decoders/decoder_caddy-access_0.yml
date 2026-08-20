@@ -1,0 +1,41 @@
+name: decoder/caddy-access/0
+enabled: true
+metadata:
+  title: Caddy Access Log Decoder
+  description: Decodes Caddy web server structured JSON access logs
+  author: Anmol Vats
+  references: []
+  documentation: 'https://caddyserver.com/docs/json/apps/http/servers/logs/'
+  supports: []
+
+parents:
+  - decoder/core-wazuh-message/0
+
+check: string_equal($_tmp_json.logger, "http.log.access")
+
+normalize:
+  - map:
+      - event.kind: event
+      - event.category: array_append(web)
+      - event.type: array_append(access)
+      - event.action: http-request
+      - event.dataset: caddy-access
+      - service.type: caddy
+      - source.ip: $_tmp_json.request.remote_ip
+      - source.address: $_tmp_json.request.remote_ip
+      - http.request.method: $_tmp_json.request.method
+      - url.original: $_tmp_json.request.uri
+      - destination.domain: $_tmp_json.request.host
+      - http.response.status_code: $_tmp_json.status
+      - http.response.body.bytes: $_tmp_json.size
+      - network.protocol: http
+      - http.version: $_tmp_json.request.proto
+      - user_agent.original: $_tmp_json.request.headers.User-Agent.0
+  - check: int_less($http.response.status_code, 400)
+    map:
+      - event.outcome: success
+  - check: int_greater_or_equal($http.response.status_code, 400)
+    map:
+      - event.outcome: failure
+  - map:
+      - _tmp_json: delete()

@@ -1,0 +1,24 @@
+id: '2c9e4f1a-8b3d-4c72-b1e6-3f7a9d2c5e04'
+logsource:
+  product: caddy
+tags:
+  - attack.reconnaissance
+  - attack.t1595
+falsepositives:
+  - Vulnerability scanning performed by authorized security teams
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Sensitive Path Probe
+  author: Anmol Vats
+  description: Detects probing of common sensitive paths such as .env, .git, wp-admin, phpmyadmin.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(\/\.env$|\/\.git|\/wp-admin|\/phpmyadmin|\/admin\.php|\/config\.php|\/backup)'
+  condition: selection

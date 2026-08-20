@@ -1,0 +1,24 @@
+id: 'a4b8d1f3-9c2e-4d67-8a1f-3e6c9b4d7a02'
+logsource:
+  product: caddy
+tags:
+  - attack.collection
+  - attack.t1213
+falsepositives:
+  - Rare, source control directories should not be web-accessible
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Source Control Artifact Access
+  author: Anmol Vats
+  description: Detects access attempts to exposed .git, .svn, or .hg directories.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(\/\.git(\/|$)|\/\.svn\/|\/\.hg\/|\/\.gitignore|\/\.gitattributes|\/\.gitmodules)'
+  condition: selection

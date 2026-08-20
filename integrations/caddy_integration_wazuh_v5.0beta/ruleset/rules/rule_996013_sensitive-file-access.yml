@@ -1,0 +1,24 @@
+id: '8d4c2f1e-6a3b-4d59-9e7a-2f1c8b4d3a67'
+logsource:
+  product: caddy
+tags:
+  - attack.discovery
+  - attack.t1083
+falsepositives:
+  - Vulnerability scanning by authorized security teams
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Sensitive File Access Attempt
+  author: Anmol Vats
+  description: Detects access attempts to sensitive files such as xmlrpc.php, .htaccess, wp-config.php, /etc/shadow.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(\/xmlrpc\.php|\/\.htaccess|\/\.htpasswd|\/wp-config\.php|\/config\.php|\/backup|\/dump\.sql|\/proc\/self|\/etc\/shadow)'
+  condition: selection

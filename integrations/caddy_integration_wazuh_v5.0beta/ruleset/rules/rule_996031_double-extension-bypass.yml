@@ -1,0 +1,24 @@
+id: '8f3c1e9a-4d6b-4a72-9e3c-2a8f1d6b4c95'
+logsource:
+  product: caddy
+tags:
+  - attack.initial-access
+  - attack.t1190
+falsepositives:
+  - Rare, double extensions are almost always evasion attempts
+level: critical
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Double Extension Bypass Upload Attempt
+  author: Anmol Vats
+  description: Detects upload attempts using double file extensions to bypass upload filters (e.g. shell.php.jpg).
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(\/upload|\/uploads|\/files|\/media|\/assets|\/static)[^?]*\.(php[0-9]?|phtml|phar|asp|aspx|jsp|jspx|cfm|cgi|pl|py|rb|sh|exe|dll|bat|cmd|vbs|ps1)\.[a-z]{2,4}(\?|$)'
+  condition: selection

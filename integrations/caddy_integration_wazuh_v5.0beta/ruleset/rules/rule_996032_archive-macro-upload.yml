@@ -1,0 +1,24 @@
+id: '2e6a9c4f-1b8d-4d37-8f2a-6c1e9a3d4b50'
+logsource:
+  product: caddy
+tags:
+  - attack.initial-access
+  - attack.t1566.001
+falsepositives:
+  - Legitimate archive/document upload functionality
+level: high
+status: experimental
+enabled: true
+metadata:
+  title: Caddy Archive or Macro-Enabled File Upload
+  author: Anmol Vats
+  description: Detects upload of archive files or macro-enabled Office documents that could carry payloads.
+  references:
+    - 'https://github.com/wazuh/wazuh/issues/37033'
+  documentation: ''
+  supports:
+    - '5.0'
+detection:
+  selection:
+    url.original|re: '(?i)(\/upload|\/uploads|\/files|\/media|\/assets|\/static)[^?]*\.(zip|rar|7z|tar|gz|tgz|iso|img|docm|xlsm|pptm|xlam|svg)(\?|$)'
+  condition: selection

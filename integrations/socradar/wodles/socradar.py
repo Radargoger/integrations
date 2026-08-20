@@ -21,7 +21,7 @@ Pagination Logic:
     4. Emit in that order → oldest first, newest last
 
 Author: SOCRadar Integration Team
-Version: 1.0.1
+Version: 1.0.2
 """
 
 import json
@@ -35,7 +35,7 @@ import urllib.error
 import urllib.parse
 from datetime import datetime, timezone
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 USER_AGENT = f"wazuh-socradar-integration/{VERSION}"
 
 
@@ -773,14 +773,104 @@ def fetch_all_incidents(config, start_epoch, end_epoch, sleep_seconds=0.2):
 # Wazuh Output
 # ---------------------------------------------------------------------------
 
+# Wazuh drops / fails oversized events (often ~64KB). Keep emitted JSON well under that.
+WAZUH_EMIT_MAX_BYTES = 28000
+WAZUH_FIELD_MAX = {
+    "alarm_text": 2000,
+    "alarm_response": 1500,
+    "mitigation": 1000,
+    "detection_analysis": 1000,
+}
+
+
+def _clip_str(value, limit):
+    if value is None:
+        return ""
+    s = value if isinstance(value, str) else str(value)
+    if len(s) <= limit:
+        return s
+    if limit <= 0:
+        return ""
+    # Reserve room for the suffix so the result never exceeds `limit`.
+    suffix_template = "... [truncated {} chars]"
+    kept = max(0, limit - len(suffix_template.format(len(s))))
+    truncated = len(s) - kept
+    suffix = suffix_template.format(truncated)
+    kept = max(0, limit - len(suffix))
+    return (s[:kept] + suffix_template.format(len(s) - kept))[:limit]
+
+
+def _dumps_emit(output):
+    return json.dumps(output, ensure_ascii=False, separators=(",", ":"))
+
+
+def _bound_emit_payload(output, alarm_id=None):
+    """Ensure stdout JSON stays within Wazuh-safe size by shrinking large fields."""
+    payload = _dumps_emit(output)
+    if len(payload.encode("utf-8")) <= WAZUH_EMIT_MAX_BYTES:
+        return payload
+
+    socradar = output.get("socradar")
+    if not isinstance(socradar, dict):
+        socradar = {}
+        output["socradar"] = socradar
+    for key in ("alarm_text", "alarm_response", "mitigation", "detection_analysis"):
+        if key in socradar:
+            socradar[key] = _clip_str(socradar.get(key), min(WAZUH_FIELD_MAX.get(key, 500), 400))
+
+    # Drop bulky optional blocks if still too large
+    for key in ("compliance", "assignees", "related_assets", "related_entities", "content"):
+        payload = _dumps_emit(output)
+        if len(payload.encode("utf-8")) <= WAZUH_EMIT_MAX_BYTES:
+            break
+        socradar.pop(key, None)
+
+    # Last resort: keep identity fields only
+    payload = _dumps_emit(output)
+    if len(payload.encode("utf-8")) > WAZUH_EMIT_MAX_BYTES:
+        output["socradar"] = {
+            "source": socradar.get("source"),
+            "alarm_id": socradar.get("alarm_id"),
+            "alarm_asset": socradar.get("alarm_asset", ""),
+            "risk_level": socradar.get("risk_level", "UNKNOWN"),
+            "status": socradar.get("status", ""),
+            "generic_title": socradar.get("generic_title", ""),
+            "main_type": socradar.get("main_type", ""),
+            "sub_type": socradar.get("sub_type", ""),
+            "date": socradar.get("date", ""),
+            "alarm_text": _clip_str(socradar.get("alarm_text"), 500),
+            "truncated": True,
+        }
+        payload = _dumps_emit(output)
+
+    log(
+        "WARN",
+        f"Truncated oversized emit payload | alarm_id={alarm_id} "
+        f"bytes={len(payload.encode('utf-8'))}",
+    )
+    return payload
+
+
 def emit_alert(incident):
-    """Print JSON line to stdout for Wazuh ingestion via wodle command."""
+    """Print JSON line to stdout for Wazuh ingestion via wodle command.
+
+    Large API fields (e.g. 300KB alarm_text dumps) are truncated for Wazuh.
+    """
     if not isinstance(incident, dict):
         return
 
     risk_level = incident.get("alarm_risk_level", "UNKNOWN")
     if risk_level is None:
         risk_level = "UNKNOWN"
+
+    raw_text = incident.get("alarm_text", "") or ""
+    raw_response = incident.get("alarm_response", "") or ""
+    if len(raw_text) > WAZUH_FIELD_MAX["alarm_text"] or len(raw_response) > WAZUH_FIELD_MAX["alarm_response"]:
+        log(
+            "WARN",
+            f"Large fields clipped for Wazuh emit | alarm_id={incident.get('alarm_id')} "
+            f"alarm_text_len={len(raw_text)} alarm_response_len={len(raw_response)}",
+        )
 
     output = {
         "socradar": {
@@ -789,8 +879,8 @@ def emit_alert(incident):
             "alarm_asset": incident.get("alarm_asset", ""),
             "risk_level": str(risk_level).upper(),
             "status": incident.get("status", ""),
-            "alarm_text": incident.get("alarm_text", ""),
-            "alarm_response": incident.get("alarm_response", ""),
+            "alarm_text": _clip_str(raw_text, WAZUH_FIELD_MAX["alarm_text"]),
+            "alarm_response": _clip_str(raw_response, WAZUH_FIELD_MAX["alarm_response"]),
             "date": incident.get("date", ""),
             "notification_id": incident.get("notification_id"),
             "assignees": incident.get("alarm_assignees", []),
@@ -806,8 +896,14 @@ def emit_alert(incident):
         output["socradar"]["main_type"] = atd.get("alarm_main_type", "")
         output["socradar"]["sub_type"] = atd.get("alarm_sub_type", "")
         output["socradar"]["generic_title"] = atd.get("alarm_generic_title", "")
-        output["socradar"]["mitigation"] = atd.get("alarm_default_mitigation_plan", "")
-        output["socradar"]["detection_analysis"] = atd.get("alarm_detection_and_analysis", "")
+        output["socradar"]["mitigation"] = _clip_str(
+            atd.get("alarm_default_mitigation_plan", ""),
+            WAZUH_FIELD_MAX["mitigation"],
+        )
+        output["socradar"]["detection_analysis"] = _clip_str(
+            atd.get("alarm_detection_and_analysis", ""),
+            WAZUH_FIELD_MAX["detection_analysis"],
+        )
 
         compliance = atd.get("alarm_compliance_list", [])
         if compliance and isinstance(compliance, list):
@@ -815,38 +911,39 @@ def emit_alert(incident):
                 {
                     "framework": c.get("name", ""),
                     "control": c.get("control_item", ""),
-                    "description": c.get("description", ""),
+                    "description": _clip_str(c.get("description", ""), 300),
                 }
-                for c in compliance
+                for c in compliance[:10]
                 if isinstance(c, dict)
             ]
 
-    # Technical content
+    # Technical content (never include content_preview — can be hundreds of KB)
     content = incident.get("content") or {}
     if content and isinstance(content, dict):
         tech = {}
         for key in [
             "compromised_domains", "compromised_emails", "compromised_ips",
             "computer_name", "malware_family", "malware_path", "username",
-            "antivirus", "app", "log_date",
+            "antivirus", "app", "log_date", "source", "source_link", "file", "date",
         ]:
             if content.get(key):
-                tech[key] = content[key]
+                val = content[key]
+                tech[key] = _clip_str(val, 500) if isinstance(val, str) else val
 
         creds = content.get("credential_details", [])
         if creds and isinstance(creds, list):
             tech["credential_count"] = len(creds)
             tech["credential_urls"] = [
-                c.get("URL", "") for c in creds if isinstance(c, dict) and c.get("URL")
+                c.get("URL", "") for c in creds[:20] if isinstance(c, dict) and c.get("URL")
             ]
             tech["credential_users"] = [
-                c.get("User", "") for c in creds if isinstance(c, dict) and c.get("User")
+                c.get("User", "") for c in creds[:20] if isinstance(c, dict) and c.get("User")
             ]
 
         if tech:
             output["socradar"]["content"] = tech
 
-    print(json.dumps(output))
+    print(_bound_emit_payload(output, alarm_id=incident.get("alarm_id")))
 
 
 # ---------------------------------------------------------------------------
@@ -875,12 +972,12 @@ def main():
         start_epoch = end_epoch - (lookback_hours * 3600)
 
     log("INFO",
-        f"Starting | {start_epoch} -> {end_epoch} | "
+        f"Starting v{VERSION} | {start_epoch} -> {end_epoch} | "
         f"{datetime.fromtimestamp(start_epoch, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} -> "
         f"{datetime.fromtimestamp(end_epoch, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}")
 
-    # Deduplicate against seen alarm IDs
-    seen = set(state.get("seen_alarm_ids", []))
+    # Deduplicate against seen alarm IDs (dict preserves insertion order)
+    seen = dict.fromkeys(state.get("seen_alarm_ids", []))
     new_count = 0
     total_fetched = 0
 
@@ -936,7 +1033,7 @@ def main():
             alarm_id = incident.get("alarm_id")
             if alarm_id is not None and alarm_id not in seen:
                 emit_alert(incident)
-                seen.add(alarm_id)
+                seen[alarm_id] = True
                 new_count += 1
         total_fetched += len(page_data or [])
 
@@ -1011,13 +1108,13 @@ def main():
                     f"date={incident.get('date')}"
                 )
             emit_alert(incident)
-            seen.add(alarm_id)
+            seen[alarm_id] = True
             new_count += 1
 
-    # Bound the seen cache (keep last 10000)
+    # Bound the seen cache (keep most recently recorded IDs, up to 50000)
     seen_list = list(seen)
-    if len(seen_list) > 10000:
-        seen_list = seen_list[-10000:]
+    if len(seen_list) > 50000:
+        seen_list = seen_list[-50000:]
 
     # Save state
     state["seen_alarm_ids"] = seen_list
