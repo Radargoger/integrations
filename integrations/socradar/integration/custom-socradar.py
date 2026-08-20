@@ -18,7 +18,7 @@ Placement:
   /var/ossec/integrations/custom-socradar.py
 
 Author: SOCRadar Integration Team
-Version: 1.0.0
+Version: 1.0.2
 """
 
 import json
@@ -39,8 +39,9 @@ LOG_FILE = os.path.join(WAZUH_HOME, "logs", "socradar-integration.log")
 
 SOCRADAR_BASE_URL = "https://platform.socradar.com/api"
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 USER_AGENT = f"wazuh-socradar-integration/{VERSION}"
+WAZUH_INGESTED_TAG = "wazuh-ingested"
 
 # SSL context (initialized in main() after config is loaded)
 SSL_CTX = None
@@ -405,18 +406,31 @@ def process_alert(config, alert):
 
     integration_config = config.get("integration", {})
 
+    tags = socradar_data.get("tags") or []
+    if not isinstance(tags, list):
+        tags = []
+    already_ingested = any(
+        str(t).strip().lower() == WAZUH_INGESTED_TAG for t in tags
+    )
+
     log("INFO", f"Processing alarm {alarm_id} | Rule: {rule_id}, Level: {rule_level}")
 
     # --- Action 1: Auto-tag ---
     if integration_config.get("auto_tag", True):
-        add_tag(config, alarm_id, "wazuh-ingested")
-        _throttle_outbound()
+        if already_ingested:
+            log("INFO", f"Tag '{WAZUH_INGESTED_TAG}' already present on alarm {alarm_id}, skipping tag")
+        else:
+            add_tag(config, alarm_id, WAZUH_INGESTED_TAG)
+            _throttle_outbound()
 
     # --- Action 2: Post Wazuh context as comment ---
     if integration_config.get("post_wazuh_context", True):
-        comment = build_wazuh_comment(alert)
-        add_comment(config, alarm_id, comment)
-        _throttle_outbound()
+        if already_ingested:
+            log("INFO", f"Alarm {alarm_id} already wazuh-ingested, skipping comment")
+        else:
+            comment = build_wazuh_comment(alert)
+            add_comment(config, alarm_id, comment)
+            _throttle_outbound()
 
     # --- Action 3: Auto-close by rule ID ---
     auto_close_rules = integration_config.get("auto_close_rule_ids", [])

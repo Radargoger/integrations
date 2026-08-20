@@ -136,6 +136,7 @@ cat > "$WAZUH_HOME/etc/socradar.conf" << CONFEOF
   "min_severity": null,
   "alarm_main_types": [],
   "initial_lookback_hours": $LOOKBACK,
+  "fetch_overlap_seconds": 900,
   "integration": {
     "auto_tag": true,
     "post_wazuh_context": true,

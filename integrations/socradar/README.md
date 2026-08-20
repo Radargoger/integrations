@@ -18,7 +18,7 @@
 
 After a one-time installation, the integration runs fully automatically:
 
-1. **Inbound (SOCRadar → Wazuh):** A wodle command runs every 1 minute, fetches new incidents from SOCRadar API v4 using epoch timestamps, and outputs JSON to stdout. Wazuh decodes the JSON and generates alerts based on severity-mapped rules.
+1. **Inbound (SOCRadar → Wazuh):** A wodle command runs every 1 minute, fetches incidents from SOCRadar API v4 using epoch timestamps (with a trailing overlap window so late-visible alarms are not skipped), and outputs JSON to stdout. Deduplication uses `seen_alarm_ids` in the state file. Wazuh decodes the JSON and generates alerts based on severity-mapped rules.
 
 2. **Outbound (Wazuh → SOCRadar):** When a SOCRadar alert triggers in Wazuh, the custom integration sends feedback to SOCRadar — auto-tagging incidents as `wazuh-ingested`, posting Wazuh context as comments, and optionally updating incident status/severity.
 
@@ -128,7 +128,16 @@ Create `/var/ossec/etc/socradar.conf`:
   "min_severity": null,
   "alarm_main_types": [],
   "initial_lookback_hours": 24,
-  "max_pages": 10,
+  "fetch_overlap_seconds": 900,
+  "max_pages": null,
+  "http_timeout_seconds": 120,
+  "http_retries": 0,
+  "page_sleep_seconds": 2,
+  "lookback_page_sleep_seconds": 2,
+  "max_retry_pages": 25,
+  "max_retry_pages_per_run": 1,
+  "retry_backoff_seconds": 60,
+  "retry_backoff_max_seconds": 3600,
 
   "integration": {
     "auto_tag": true,
@@ -191,17 +200,18 @@ sudo /var/ossec/bin/wazuh-control restart
 | `ca_bundle_path` | string | `null` | Optional CA bundle path (PEM) for proxy/self-signed environments |
 | `verbose` | boolean | `false` | Enable verbose DEBUG logging (to `/var/ossec/logs/socradar-wodle.log`) |
 | `log_level` | string | `INFO` | Log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (overrides `verbose`) |
-| `fetch_status` | string | `OPEN` | Filter: OPEN, RESOLVED, etc. |
-| `fetch_limit` | integer | `100` | Page size per API call (capped at 100 by the script) |
-| `min_severity` | string | `null` | Minimum severity filter |
+| `fetch_status` | string | *(omit)* | If set (e.g. `OPEN`), sent as API `status` filter. If omitted, no status filter is applied. Installer sets `OPEN`. |
+| `fetch_limit` | integer | `100` | Page size per API call (`DEFAULT_PAGE_SIZE`; hard-capped at 100) |
+| `min_severity` | string | `null` | If set, sent as API `severities` query param (not a numeric minimum in code) |
 | `alarm_main_types` | array | `[]` | Filter by main type (empty = all) |
 | `initial_lookback_hours` | integer | `24` | Hours to look back on first run |
-| `max_pages` | integer | `null` | Optional safety limit for pagination (useful during first runs) |
+| `fetch_overlap_seconds` | integer | `900` | On steady-state runs, re-query this many seconds before `now` when that is earlier than `last_run`. Covers SOCRadar API lag. Duplicates suppressed via `seen_alarm_ids`. Set `0` to disable. |
+| `max_pages` | integer | `null` | Optional page cap. `null`/omitted = unlimited (`get_max_pages` returns no limit) |
 | `http_timeout_seconds` | integer | `120` | HTTP request timeout per API call |
-| `http_retries` | integer | `0` | Extra in-run HTTP retries for transient errors (recommended: keep low; main retry mechanism is the state retry queue) |
+| `http_retries` | integer | `0` | Extra in-run HTTP retries for transient errors (main retry mechanism is the state retry queue) |
 | `page_sleep_seconds` | number | `2` | Sleep between page requests during pagination (steady-state runs) |
-| `lookback_page_sleep_seconds` | number | `2` | Sleep between page requests during pagination on the first run (large lookback) |
-| `max_retry_pages` | integer | `200` | Max number of failed pages kept in the persistent retry queue |
+| `lookback_page_sleep_seconds` | number | *(same as `page_sleep_seconds`)* | Sleep between pages on the first run; defaults to `page_sleep_seconds` |
+| `max_retry_pages` | integer | `25` | Max failed pages kept in the persistent retry queue (code default; legacy key `max_retry_windows` also accepted) |
 | `max_retry_pages_per_run` | integer | `1` | How many queued failed pages to attempt per run |
 | `retry_backoff_seconds` | integer | `60` | Base backoff for queued page retries (exponential) |
 | `retry_backoff_max_seconds` | integer | `3600` | Maximum backoff for queued page retries |
@@ -210,8 +220,8 @@ Outbound (Wazuh → SOCRadar) settings are under `integration` in the same confi
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `integration.auto_tag` | boolean | `true` | Add the `wazuh-ingested` tag to the alarm |
-| `integration.post_wazuh_context` | boolean | `true` | Post rule/level/context as a SOCRadar comment |
+| `integration.auto_tag` | boolean | `true` | Add the `wazuh-ingested` tag to the alarm (skipped if the tag is already present on the alert payload) |
+| `integration.post_wazuh_context` | boolean | `true` | Post rule/level/context as a SOCRadar comment (skipped if `wazuh-ingested` is already present) |
 | `integration.auto_close_rule_ids` | array[int] | `[]` | If Wazuh rule ID matches, close as FALSE_POSITIVE |
 | `integration.auto_resolve_rule_ids` | array[int] | `[]` | If Wazuh rule ID matches, resolve alarm |
 | `integration.escalate_threshold` | integer | `12` | If Wazuh alert level >= threshold, severity may be escalated |

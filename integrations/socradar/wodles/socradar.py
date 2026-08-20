@@ -21,7 +21,7 @@ Pagination Logic:
     4. Emit in that order → oldest first, newest last
 
 Author: SOCRadar Integration Team
-Version: 1.0.2
+Version: 1.0.3
 """
 
 import json
@@ -35,7 +35,7 @@ import urllib.error
 import urllib.parse
 from datetime import datetime, timezone
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 USER_AGENT = f"wazuh-socradar-integration/{VERSION}"
 
 
@@ -959,13 +959,25 @@ def main():
     SSL_CTX = build_ssl_context(config)
     state = load_state()
 
-    # Time window: last_run → now
+    # Time window: last_run → now, with configurable overlap to cover API lag
     end_epoch = now_epoch()
 
     last_run_epoch = state.get("last_run_epoch")
     is_first_run = not bool(last_run_epoch)
     if last_run_epoch:
-        start_epoch = last_run_epoch
+        start_epoch = int(last_run_epoch)
+        # Re-query a trailing window so alarms that appear late on the API
+        # (after last_run advanced) are still visible. Dedup via seen_alarm_ids.
+        overlap = _get_int(config, "fetch_overlap_seconds", default=900, min_value=0, max_value=86400)
+        if overlap:
+            overlapped_start = end_epoch - overlap
+            if overlapped_start < start_epoch:
+                log(
+                    "INFO",
+                    f"Applying fetch overlap | raw_start={start_epoch} "
+                    f"overlap_seconds={overlap} -> start={overlapped_start}",
+                )
+                start_epoch = overlapped_start
     else:
         # First run: look back N hours (default 24)
         lookback_hours = config.get("initial_lookback_hours", 24)
