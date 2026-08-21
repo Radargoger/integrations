@@ -304,6 +304,12 @@ Expected: Rule 100803, Level 10.
 - [SOCRadar Platform](https://platform.socradar.com)
 - [Wazuh Custom Integration Guide](https://documentation.wazuh.com/current/user-manual/manager/integration-with-external-apis.html)
 
-## Author
+## Provenance and Maintenance
 
-SOCRadar Integration Team — integrations@socradar.io
+| Field | Detail |
+|-------|--------|
+| **Original source** | Developed by SOCRadar as the vendor's native Wazuh integration. It is not derived from or adapted from a third-party article, repository or implementation. |
+| **Adapted by** | SOCRadar Integration Team — no third-party adaptation layer. |
+| **Tested versions** | Wazuh Manager 4.14.3 (targets Wazuh 4.x); Python 3.6 or later on the manager host, no external packages; SOCRadar Incident API v4. Component versions in this directory: wodle `wodles/socradar.py` 1.0.3, integration `integration/custom-socradar.py` 1.0.2. |
+| **Maintainer** | SOCRadar Integration Team — integrations@socradar.io |
+| **Support boundary** | Vendor-maintained. Questions and issues concerning the scripts, decoder and rules in this directory are handled by SOCRadar through integrations@socradar.io or the customer's existing SOCRadar support channel. An active SOCRadar account with API access is required. Wazuh platform issues unrelated to this integration remain with the Wazuh support channels. |
