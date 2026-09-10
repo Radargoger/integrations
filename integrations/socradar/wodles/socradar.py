@@ -1295,7 +1295,7 @@ def main():
 
     # Incremental window: last_run → now. Catch-up (if due) is a second fetch.
     end_epoch = now_epoch()
-    overlap = _get_int(config, "fetch_overlap_seconds", default=900, min_value=0, max_value=86400)
+    overlap = _get_int(config, "fetch_overlap_seconds", default=180, min_value=0, max_value=86400)
 
     last_run_epoch = state.get("last_run_epoch")
     is_first_run = not bool(last_run_epoch)

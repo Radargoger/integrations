@@ -136,7 +136,7 @@ cat > "$WAZUH_HOME/etc/socradar.conf" << CONFEOF
   "min_severity": null,
   "alarm_main_types": [],
   "initial_lookback_hours": $LOOKBACK,
-  "fetch_overlap_seconds": 900,
+  "fetch_overlap_seconds": 180,
   "max_pages": 10,
   "max_catchup_pages": 15,
   "catchup_http_timeout_seconds": 15,
