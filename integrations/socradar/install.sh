@@ -137,6 +137,9 @@ cat > "$WAZUH_HOME/etc/socradar.conf" << CONFEOF
   "alarm_main_types": [],
   "initial_lookback_hours": $LOOKBACK,
   "fetch_overlap_seconds": 900,
+  "max_pages": 10,
+  "max_catchup_pages": 15,
+  "catchup_http_timeout_seconds": 15,
   "integration": {
     "auto_tag": true,
     "post_wazuh_context": true,
@@ -157,7 +160,12 @@ echo -e "${GREEN}  ✓ Configuration created${NC}"
 touch "$WAZUH_HOME/var/socradar_state.json"
 echo "{}" > "$WAZUH_HOME/var/socradar_state.json"
 chown root:$WAZUH_GROUP "$WAZUH_HOME/var/socradar_state.json"
-echo -e "${GREEN}  ✓ State file created${NC}"
+chmod 660 "$WAZUH_HOME/var/socradar_state.json"
+touch "$WAZUH_HOME/var/socradar_outbound_state.json"
+echo "{}" > "$WAZUH_HOME/var/socradar_outbound_state.json"
+chown root:$WAZUH_GROUP "$WAZUH_HOME/var/socradar_outbound_state.json"
+chmod 660 "$WAZUH_HOME/var/socradar_outbound_state.json"
+echo -e "${GREEN}  ✓ State files created${NC}"
 
 # --- Step 6: Inject ossec.conf blocks ---
 
